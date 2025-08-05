@@ -1,0 +1,5 @@
+streamlit
+pdfplumber
+python-docx
+openpyxl
+PyMuPDF
