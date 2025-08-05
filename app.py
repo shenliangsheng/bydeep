@@ -28,6 +28,8 @@ if 'generated_files' not in st.session_state:
     st.session_state.generated_files = []
 if 'temp_dir' not in st.session_state:
     st.session_state.temp_dir = ""
+if 'templates_uploaded' not in st.session_state:
+    st.session_state.templates_uploaded = False
 
 # PDF处理函数
 def extract_pdf_data(pdf_path):
@@ -135,8 +137,8 @@ def number_to_upper(amount):
 # 生成Word文档函数
 def create_word_doc(data, agent_fee, categories, output_dir):
     """生成Word请款单"""
-    # 加载模板文件 - 使用Streamlit的文件管理
-    template_path = os.path.join(os.path.dirname(__file__), "请款单模板.docx")
+    # 使用临时目录中的模板文件
+    template_path = os.path.join(st.session_state.temp_dir, "请款单模板.docx")
     
     if not os.path.exists(template_path):
         st.error(f"找不到模板文件: {template_path}")
@@ -203,8 +205,8 @@ def create_word_doc(data, agent_fee, categories, output_dir):
 # 生成Excel汇总函数
 def create_excel_summary(all_applicants_summary, output_dir):
     """生成Excel汇总表"""
-    # 加载模板文件 - 使用Streamlit的文件管理
-    template_path = os.path.join(os.path.dirname(__file__), "发票申请表模板.xlsx")
+    # 使用临时目录中的模板文件
+    template_path = os.path.join(st.session_state.temp_dir, "发票申请表模板.xlsx")
     
     if not os.path.exists(template_path):
         st.error(f"找不到模板文件: {template_path}")
@@ -244,60 +246,99 @@ def create_excel_summary(all_applicants_summary, output_dir):
         st.error(f"生成Excel汇总时出错: {str(e)}")
         return None
 
-# 文件上传和处理区域
-st.header("1. 上传PDF文件")
-uploaded_files = st.file_uploader("请选择PDF文件", type="pdf", accept_multiple_files=True)
+# 模板文件上传区域
+st.sidebar.header("模板文件上传")
+st.sidebar.info("请上传以下模板文件以继续操作")
 
-if uploaded_files and st.button("处理PDF文件"):
-    with st.spinner("正在处理PDF文件..."):
-        try:
-            # 创建临时目录
-            temp_dir = tempfile.mkdtemp()
-            pdf_dir = os.path.join(temp_dir, "pdf_files")
-            output_dir = os.path.join(temp_dir, "output")
-            os.makedirs(pdf_dir, exist_ok=True)
-            os.makedirs(output_dir, exist_ok=True)
-            
-            # 保存上传的文件
-            for uploaded_file in uploaded_files:
-                file_path = os.path.join(pdf_dir, uploaded_file.name)
-                with open(file_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-            
-            # 使用原有逻辑处理PDF
-            applicant_data_groups = defaultdict(list)
-            manual_input_needed = {}
-            
-            for filename in os.listdir(pdf_dir):
-                if filename.endswith(".pdf"):
-                    try:
-                        pdf_path = os.path.join(pdf_dir, filename)
-                        data = extract_pdf_data(pdf_path)
-                        applicant = data["申请人"]
-                        applicant_data_groups[applicant].append(data)
-                        
-                        # 检查需要手动输入的商标
-                        for tm_item in data["商标列表"]:
-                            if tm_item["类别"] == "MANUAL_INPUT_REQUIRED":
-                                if applicant not in manual_input_needed:
-                                    manual_input_needed[applicant] = []
-                                manual_input_needed[applicant].append(tm_item["商标名称"])
-                                
-                    except Exception as e:
-                        st.error(f"处理文件 {filename} 时出错: {str(e)}")
-                        st.text(traceback.format_exc())
-            
-            # 保存处理结果到session
-            st.session_state.extracted_data = dict(applicant_data_groups)
-            st.session_state.manual_input_needed = manual_input_needed
-            st.session_state.processing_stage = 1
-            st.session_state.temp_dir = temp_dir
-            
-            st.success(f"成功处理 {len(uploaded_files)} 个PDF文件！")
-            st.info(f"共发现 {len(applicant_data_groups)} 个申请人")
-        except Exception as e:
-            st.error(f"处理过程中发生错误: {str(e)}")
-            st.text(traceback.format_exc())
+# 请款单模板上传
+payment_template = st.sidebar.file_uploader("请款单模板 (Word)", type=["docx"])
+if payment_template:
+    # 创建临时目录（如果尚未创建）
+    if not st.session_state.temp_dir:
+        st.session_state.temp_dir = tempfile.mkdtemp()
+    
+    template_path = os.path.join(st.session_state.temp_dir, "请款单模板.docx")
+    with open(template_path, "wb") as f:
+        f.write(payment_template.getbuffer())
+    st.sidebar.success("请款单模板上传成功！")
+
+# 发票申请表模板上传
+invoice_template = st.sidebar.file_uploader("发票申请表模板 (Excel)", type=["xlsx"])
+if invoice_template:
+    # 创建临时目录（如果尚未创建）
+    if not st.session_state.temp_dir:
+        st.session_state.temp_dir = tempfile.mkdtemp()
+    
+    template_path = os.path.join(st.session_state.temp_dir, "发票申请表模板.xlsx")
+    with open(template_path, "wb") as f:
+        f.write(invoice_template.getbuffer())
+    st.sidebar.success("发票申请表模板上传成功！")
+
+# 检查模板是否已上传
+if payment_template and invoice_template:
+    st.session_state.templates_uploaded = True
+    st.sidebar.success("所有模板文件已就绪！")
+elif payment_template or invoice_template:
+    st.sidebar.warning("请上传所有必需的模板文件")
+else:
+    st.sidebar.info("请上传所有必需的模板文件以开始")
+
+# 文件上传和处理区域
+if st.session_state.templates_uploaded:
+    st.header("1. 上传PDF文件")
+    uploaded_files = st.file_uploader("请选择PDF文件", type="pdf", accept_multiple_files=True)
+
+    if uploaded_files and st.button("处理PDF文件"):
+        with st.spinner("正在处理PDF文件..."):
+            try:
+                # 创建临时目录（如果尚未创建）
+                if not st.session_state.temp_dir:
+                    st.session_state.temp_dir = tempfile.mkdtemp()
+                    
+                pdf_dir = os.path.join(st.session_state.temp_dir, "pdf_files")
+                output_dir = os.path.join(st.session_state.temp_dir, "output")
+                os.makedirs(pdf_dir, exist_ok=True)
+                os.makedirs(output_dir, exist_ok=True)
+                
+                # 保存上传的文件
+                for uploaded_file in uploaded_files:
+                    file_path = os.path.join(pdf_dir, uploaded_file.name)
+                    with open(file_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                
+                # 使用原有逻辑处理PDF
+                applicant_data_groups = defaultdict(list)
+                manual_input_needed = {}
+                
+                for filename in os.listdir(pdf_dir):
+                    if filename.endswith(".pdf"):
+                        try:
+                            pdf_path = os.path.join(pdf_dir, filename)
+                            data = extract_pdf_data(pdf_path)
+                            applicant = data["申请人"]
+                            applicant_data_groups[applicant].append(data)
+                            
+                            # 检查需要手动输入的商标
+                            for tm_item in data["商标列表"]:
+                                if tm_item["类别"] == "MANUAL_INPUT_REQUIRED":
+                                    if applicant not in manual_input_needed:
+                                        manual_input_needed[applicant] = []
+                                    manual_input_needed[applicant].append(tm_item["商标名称"])
+                                    
+                        except Exception as e:
+                            st.error(f"处理文件 {filename} 时出错: {str(e)}")
+                            st.text(traceback.format_exc())
+                
+                # 保存处理结果到session
+                st.session_state.extracted_data = dict(applicant_data_groups)
+                st.session_state.manual_input_needed = manual_input_needed
+                st.session_state.processing_stage = 1
+                
+                st.success(f"成功处理 {len(uploaded_files)} 个PDF文件！")
+                st.info(f"共发现 {len(applicant_data_groups)} 个申请人")
+            except Exception as e:
+                st.error(f"处理过程中发生错误: {str(e)}")
+                st.text(traceback.format_exc())
 
 # 显示提取结果
 if st.session_state.processing_stage >= 1 and st.session_state.extracted_data:
@@ -493,34 +534,20 @@ if st.session_state.processing_stage == 2 and st.session_state.generated_files:
 
 # 重置按钮
 if st.button("重置所有数据"):
-    st.session_state.clear()
-    st.experimental_rerun()
+    # 清除所有session状态
+    keys_to_clear = list(st.session_state.keys())
+    for key in keys_to_clear:
+        del st.session_state[key]
+    
+    # 重新初始化必要的状态
+    st.session_state.processing_stage = 0
+    st.session_state.extracted_data = None
+    st.session_state.manual_input_needed = {}
+    st.session_state.agent_fees = {}
+    st.session_state.generated_files = []
+    st.session_state.templates_uploaded = False
+    
+    # 重新创建临时目录
+    st.session_state.temp_dir = tempfile.mkdtemp()
+    
     st.success("系统已重置，可以开始新的处理流程！")
-    time.sleep(1)
-    st.experimental_rerun()
-
-# 模板文件上传区域（仅在第一次运行时显示）
-if "templates_uploaded" not in st.session_state:
-    st.sidebar.header("模板文件上传")
-    st.sidebar.info("请上传以下模板文件以继续操作")
-    
-    # 请款单模板上传
-    payment_template = st.sidebar.file_uploader("请款单模板 (Word)", type=["docx"])
-    if payment_template:
-        template_path = os.path.join(os.path.dirname(__file__), "请款单模板.docx")
-        with open(template_path, "wb") as f:
-            f.write(payment_template.getbuffer())
-        st.sidebar.success("请款单模板上传成功！")
-    
-    # 发票申请表模板上传
-    invoice_template = st.sidebar.file_uploader("发票申请表模板 (Excel)", type=["xlsx"])
-    if invoice_template:
-        template_path = os.path.join(os.path.dirname(__file__), "发票申请表模板.xlsx")
-        with open(template_path, "wb") as f:
-            f.write(invoice_template.getbuffer())
-        st.sidebar.success("发票申请表模板上传成功！")
-    
-    if payment_template and invoice_template:
-        st.session_state.templates_uploaded = True
-        st.sidebar.success("所有模板文件已就绪！")
-        st.experimental_rerun()
