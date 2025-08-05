@@ -219,8 +219,8 @@ def create_excel_summary(all_applicants_summary, output_dir):
         
         for applicant_data in all_applicants_summary:
             # 官费行
-            ws[f'B{row_num}'] = applicant_data["申请人"]
-            ws[f'C{row_num}'] = applicant_data["统一社会信用代码"]
+            ws[f'C{row_num}'] = applicant_data["申请人"]
+            ws[f'D{row_num}'] = applicant_data["统一社会信用代码"]
             ws[f'G{row_num}'] = applicant_data["总官费"]
             ws[f'H{row_num}'] = applicant_data["总官费"]
             ws[f'I{row_num}'] = applicant_data["总计"]
@@ -228,8 +228,8 @@ def create_excel_summary(all_applicants_summary, output_dir):
             row_num += 1
             
             # 代理费行
-            ws[f'B{row_num}'] = applicant_data["申请人"]
-            ws[f'C{row_num}'] = applicant_data["统一社会信用代码"]
+            ws[f'C{row_num}'] = applicant_data["申请人"]
+            ws[f'D{row_num}'] = applicant_data["统一社会信用代码"]
             ws[f'G{row_num}'] = applicant_data["总代理费"]
             ws[f'H{row_num}'] = applicant_data["总代理费"]
             ws[f'I{row_num}'] = applicant_data["总计"]
