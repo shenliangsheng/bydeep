@@ -14,6 +14,7 @@ from pathlib import Path
 # 设置页面标题和布局
 st.set_page_config(page_title="商标案件请款系统", layout="wide")
 st.title("商标案件请款系统")
+st.caption("案件类目前仅支持驳回复审、异议申请、无效申请和撤三申请")
 
 # 初始化session状态
 if 'processing_stage' not in st.session_state:
@@ -71,7 +72,8 @@ def extract_pdf_data(pdf_path):
                 applicant_match = re.search(r"申请人名称\(中文\)：\s*(.*?)\s*\(\s*英文\)", page_text)
                 applicant = applicant_match.group(1).strip() if applicant_match else "N/A"
                 
-                unified_credit_code_match = re.search(r"统一社会信用代码：\s*([0-9A-Z]+)", page_text)
+                # 使用统一的信用代码提取正则表达式
+                unified_credit_code_match = re.search(r'(?:统一社会信用代码|信用代码)[：:]\s*([0-9A-Z]{18})', page_text, re.IGNORECASE)
                 unified_credit_code = unified_credit_code_match.group(1).strip() if unified_credit_code_match else "N/A"
                 
                 # 尝试从第一页提取日期
@@ -150,6 +152,10 @@ def extract_review_case(text, filename):
                           text, re.DOTALL)
     applicant = applicant.group(1).strip() if applicant else "N/A"
     
+    # 提取统一社会信用代码
+    unified_credit_code_match = re.search(r'(?:统一社会信用代码|信用代码)[：:]\s*([0-9A-Z]{18})', text, re.IGNORECASE)
+    unified_credit_code = unified_credit_code_match.group(1).strip() if unified_credit_code_match else "N/A"
+    
     trademarks = []
     for m in re.finditer(r'申请商标：\s*(.*?)\s+类别：\s*(\d+).*?申请号/国际注册号：\s*([0-9A-Za-z]+)', 
                          text, re.DOTALL):
@@ -159,13 +165,23 @@ def extract_review_case(text, filename):
             "注册号": m.group(3)
         })
     
-    return {"文件名": filename, "案件类型": case_type, "申请人": applicant, "商标列表": trademarks}
+    return {
+        "文件名": filename, 
+        "案件类型": case_type, 
+        "申请人": applicant,
+        "统一社会信用代码": unified_credit_code,
+        "商标列表": trademarks
+    }
 
 def extract_non_use_case(text, filename):
     case_type = "撤三申请"
     applicant = re.search(r'(?:申请人名称|申请人)：\s*([^\n]*?)(?=\s+(?:统一社会信用代码|地址))', 
                           text, re.DOTALL)
     applicant = applicant.group(1).strip() if applicant else "N/A"
+    
+    # 提取统一社会信用代码
+    unified_credit_code_match = re.search(r'(?:统一社会信用代码|信用代码)[：:]\s*([0-9A-Z]{18})', text, re.IGNORECASE)
+    unified_credit_code = unified_credit_code_match.group(1).strip() if unified_credit_code_match else "N/A"
     
     trademarks = []
     for m in re.finditer(r'商标：\s*(.*?)\s+类别：\s*(\d+).*?商标注册号：\s*([0-9A-Za-z]+)', 
@@ -176,13 +192,23 @@ def extract_non_use_case(text, filename):
             "注册号": m.group(3)
         })
     
-    return {"文件名": filename, "案件类型": case_type, "申请人": applicant, "商标列表": trademarks}
+    return {
+        "文件名": filename, 
+        "案件类型": case_type, 
+        "申请人": applicant,
+        "统一社会信用代码": unified_credit_code,
+        "商标列表": trademarks
+    }
 
 def extract_opposition_case(text, filename):
     case_type = "商标异议"
     applicant = re.search(r'异议人名称：\s*([^\n]*?)\s+统一社会信用代码', 
                           text, re.IGNORECASE)
     applicant = applicant.group(1).strip() if applicant else "N/A"
+    
+    # 提取统一社会信用代码
+    unified_credit_code_match = re.search(r'(?:统一社会信用代码|信用代码)[：:]\s*([0-9A-Z]{18})', text, re.IGNORECASE)
+    unified_credit_code = unified_credit_code_match.group(1).strip() if unified_credit_code_match else "N/A"
     
     trademarks = []
     for m in re.finditer(r'被异议商标：\s*(.*?)\s+被异议类别：\s*(\d+).*?商标注册号：\s*([0-9A-Za-z]+)', 
@@ -193,13 +219,23 @@ def extract_opposition_case(text, filename):
             "注册号": m.group(3)
         })
     
-    return {"文件名": filename, "案件类型": case_type, "申请人": applicant, "商标列表": trademarks}
+    return {
+        "文件名": filename, 
+        "案件类型": case_type, 
+        "申请人": applicant,
+        "统一社会信用代码": unified_credit_code,
+        "商标列表": trademarks
+    }
 
 def extract_invalid_case(text, filename):
     case_type = "无效宣告"
     applicant = re.search(r'(?:申请人名称\$\$中文\$\$|申请人名称)：\s*([^\n]*?)(?=\s+(?:统一社会信用代码|地址))', 
                           text, re.DOTALL)
     applicant = applicant.group(1).strip() if applicant else "N/A"
+    
+    # 提取统一社会信用代码
+    unified_credit_code_match = re.search(r'(?:统一社会信用代码|信用代码)[：:]\s*([0-9A-Z]{18})', text, re.IGNORECASE)
+    unified_credit_code = unified_credit_code_match.group(1).strip() if unified_credit_code_match else "N/A"
     
     trademarks = []
     for m in re.finditer(r'争议商标：\s*(.*?)\s+类别：\s*(\d+).*?注册号/国际注册号：\s*([0-9A-Za-z]+)', 
@@ -210,7 +246,13 @@ def extract_invalid_case(text, filename):
             "注册号": m.group(3)
         })
     
-    return {"文件名": filename, "案件类型": case_type, "申请人": applicant, "商标列表": trademarks}
+    return {
+        "文件名": filename, 
+        "案件类型": case_type, 
+        "申请人": applicant,
+        "统一社会信用代码": unified_credit_code,
+        "商标列表": trademarks
+    }
 
 # ============================= 通用文档生成函数 =============================
 def create_word_doc(applicant, records, output_dir, case_type):
@@ -303,6 +345,7 @@ def build_excel(rows, output_dir):
         
         for r in rows:
             ws[f"B{row_idx}"] = r["申请人"]
+            ws[f"C{row_idx}"] = r["统一社会信用代码"]  # 统一社会信用代码列
             ws[f"G{row_idx}"] = r["总官费"]
             ws[f"H{row_idx}"] = r["总官费"]
             ws[f"I{row_idx}"] = r["总计"]
@@ -310,6 +353,7 @@ def build_excel(rows, output_dir):
             row_idx += 1
             
             ws[f"B{row_idx}"] = r["申请人"]
+            ws[f"C{row_idx}"] = r["统一社会信用代码"]  # 统一社会信用代码列
             ws[f"G{row_idx}"] = r["总代理费"]
             ws[f"H{row_idx}"] = r["总代理费"]
             ws[f"I{row_idx}"] = r["总计"]
@@ -373,6 +417,7 @@ def main_app():
                                 # 新申请商标处理
                                 data = extract_pdf_data(file_path)
                                 applicant = data["申请人"]
+                                unified_credit_code = data["统一社会信用代码"]
                                 
                                 for tm in data["商标列表"]:
                                     # 处理需要手动输入的类别
@@ -385,6 +430,7 @@ def main_app():
                                         "类别": tm["类别"],
                                         "案件类型": "商标注册申请",
                                         "官费": OFFICIAL_FEES["新申请商标"],
+                                        "统一社会信用代码": unified_credit_code,  # 添加统一社会信用代码
                                     })
                                 
                                 extracted_data.append(data)
@@ -407,6 +453,7 @@ def main_app():
                                 # 提取案件信息
                                 data = extract_case_info(text, filename)
                                 applicant = data["申请人"]
+                                unified_credit_code = data["统一社会信用代码"]
                                 
                                 for tm in data["商标列表"]:
                                     applicant_map[applicant].append({
@@ -414,6 +461,7 @@ def main_app():
                                         "类别": tm["类别"],
                                         "案件类型": data["案件类型"],
                                         "官费": OFFICIAL_FEES[data["案件类型"]],
+                                        "统一社会信用代码": unified_credit_code,  # 添加统一社会信用代码
                                     })
                                 
                                 extracted_data.append(data)
@@ -441,6 +489,7 @@ def main_app():
         
         for applicant, records in st.session_state.applicant_map.items():
             with st.expander(f"申请人: {applicant}"):
+                st.write(f"统一社会信用代码: {records[0].get('统一社会信用代码', 'N/A')}")
                 st.write(f"案件数量: {len(records)}")
                 for record in records:
                     st.write(f"- 商标: {record['商标名称']}, 类别: {record['类别']}, 类型: {record['案件类型']}, 官费: {record['官费']}元")
@@ -506,6 +555,7 @@ def main_app():
                         if st.session_state.case_type == "新申请商标":
                             # 创建一个新的记录列表，处理手动输入
                             processed_records = []
+                            unified_credit_code = records[0].get("统一社会信用代码", "N/A")
                             
                             for data in st.session_state.extracted_data:
                                 if data["申请人"] == applicant:
@@ -522,6 +572,7 @@ def main_app():
                                                         "案件类型": "商标注册申请",
                                                         "官费": OFFICIAL_FEES["新申请商标"],
                                                         "代理费": agent_fee,
+                                                        "统一社会信用代码": unified_credit_code,
                                                     })
                                         else:
                                             processed_records.append({
@@ -530,12 +581,16 @@ def main_app():
                                                 "案件类型": "商标注册申请",
                                                 "官费": OFFICIAL_FEES["新申请商标"],
                                                 "代理费": agent_fee,
+                                                "统一社会信用代码": unified_credit_code,
                                             })
                         else:
                             # 案件类商标直接添加代理费
                             processed_records = []
+                            unified_credit_code = records[0].get("统一社会信用代码", "N/A")
+                            
                             for record in records:
                                 record["代理费"] = agent_fee
+                                record["统一社会信用代码"] = unified_credit_code
                                 processed_records.append(record)
                         
                         # 生成Word文档
@@ -563,6 +618,7 @@ def main_app():
                                 total_agent = sum(r["代理费"] for r in processed_records)
                                 excel_rows.append({
                                     "申请人": applicant,
+                                    "统一社会信用代码": unified_credit_code,  # 添加统一社会信用代码
                                     "总官费": total_official,
                                     "总代理费": total_agent,
                                     "总计": total_official + total_agent,
