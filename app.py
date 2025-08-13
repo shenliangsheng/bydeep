@@ -344,16 +344,16 @@ def build_excel(rows, output_dir):
         row_idx = 2
         
         for r in rows:
-            ws[f"B{row_idx}"] = r["申请人"]
-            ws[f"C{row_idx}"] = r["统一社会信用代码"]  # 统一社会信用代码列
+            ws[f"C{row_idx}"] = r["申请人"]
+            ws[f"D{row_idx}"] = r["统一社会信用代码"]  # 统一社会信用代码列
             ws[f"G{row_idx}"] = r["总官费"]
             ws[f"H{row_idx}"] = r["总官费"]
             ws[f"I{row_idx}"] = r["总计"]
             ws[f"Q{row_idx}"] = datetime.date.today().strftime("%Y年%m月%d日")
             row_idx += 1
             
-            ws[f"B{row_idx}"] = r["申请人"]
-            ws[f"C{row_idx}"] = r["统一社会信用代码"]  # 统一社会信用代码列
+            ws[f"C{row_idx}"] = r["申请人"]
+            ws[f"D{row_idx}"] = r["统一社会信用代码"]  # 统一社会信用代码列
             ws[f"G{row_idx}"] = r["总代理费"]
             ws[f"H{row_idx}"] = r["总代理费"]
             ws[f"I{row_idx}"] = r["总计"]
@@ -509,7 +509,7 @@ def main_app():
         # 设置代理费
         st.subheader("代理费设置")
         for applicant in st.session_state.applicant_map.keys():
-            default_fee = st.session_state.agent_fees.get(applicant, 1000)
+            default_fee = st.session_state.agent_fees.get(applicant, 600)
             fee = st.number_input(
                 f"{applicant}的代理费(元/件)", 
                 min_value=0, 
