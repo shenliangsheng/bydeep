@@ -184,14 +184,17 @@ def extract_non_use_case(text, filename):
     unified_credit_code = unified_credit_code_match.group(1).strip() if unified_credit_code_match else "N/A"
     
     trademarks = []
-    for m in re.finditer(r'商标：\s*(.*?)\s+类别：\s*(\d+).*?商标注册号：\s*([0-9A-Za-z]+)', 
-                         text, re.DOTALL):
-        trademarks.append({
-            "商标名称": m.group(1).strip(), 
-            "类别": int(m.group(2)), 
-            "注册号": m.group(3)
-        })
+    trademark_name_match = re.search(r'商标：\s*(.*?)\s*(?=\n|$)', text)
+    category_match = re.search(r'类别：\s*(\d+)', text)
+    registration_number_match = re.search(r'商标注册号：\s*([0-9A-Za-z]+)', text)
     
+    if trademark_name_match and category_match and registration_number_match:
+        trademarks.append({
+            "商标名称": trademark_name_match.group(1).strip(),
+            "类别": int(category_match.group(1)),
+            "注册号": registration_number_match.group(1)
+        })
+   
     return {
         "文件名": filename, 
         "案件类型": case_type, 
